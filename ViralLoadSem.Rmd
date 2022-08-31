@@ -1,0 +1,78 @@
+---
+title: "ViralLoaadSEM"
+author: "Adejumo Ridwan Suleiman"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+#
+```{r}
+library(mvnormalTest)
+library(lavaan)
+library(dplyr)
+```
+
+# Load the Data
+```{r}
+VL_data <- read_sav("C:/Users/User/Documents/ViralLoadSEM/Adherence.sav")
+
+names(VL_data)
+```
+
+# Data Cleaning
+```{r}
+data <- VL_data %>% 
+  select(Age, Sex, Durationcat2, ARTregimen, PreEACVLcat, 
+         Forgot, Beliefs, Sideffects, PhysicalIllness, Substanceuse, Depression, Pillburden, LostRanout, Transport, Scheduling, DisclosureFear, Partner, DrugStock, Stigma,
+         Education, Counselling, PeerSupport, Extendedpickup,
+         PillBox, Calender, Incentives, ARVswallowing, PhoneCalls, SMS, Alarms) %>% 
+  rename(Dur = Durationcat2,
+         ART = ARTregimen,
+         PVL = PreEACVLcat,
+         b1 = Forgot,
+         b2 = Beliefs,
+         b3 = Sideffects,
+         b4 = PhysicalIllness,
+         b5 = Substanceuse,
+         b6 = Depression,
+         b7 = Pillburden,
+         b8 = LostRanout,
+         b9 = Transport,
+         b10 = Scheduling,
+         b11 = DisclosureFear,
+         b12 = Partner,
+         b13 = DrugStock,
+         b14 = Stigma,
+         s1 = Education,
+         s2 = Counselling,
+         s3 = PeerSupport,
+         s4 = Extendedpickup,
+         t1 = PillBox,
+         t2 = Calender,
+         t3 = Incentives,
+         t4 = ARVswallowing,
+         t5 = PhoneCalls,
+         t6 = SMS,
+         t7 = Alarms)
+  
+```
+
+# Data Summary
+```{r}
+skimr::skim(data)
+```
+
+# Assession Assumptions(Shapiro-Wilk Univariate normality test)
+```{r}
+mvnout <- mardia(data)
+mvnout$uv.shapiro
+```
+```{r}
+mvnout$mv.test
+```
+
+# Model Specification
+```{r}
+
+```
+
