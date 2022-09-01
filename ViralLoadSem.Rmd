@@ -10,6 +10,8 @@ output: pdf_document
 library(mvnormalTest)
 library(lavaan)
 library(dplyr)
+library(tidyr)
+library(lavaanPlot)
 ```
 
 # Load the Data
@@ -22,11 +24,12 @@ names(VL_data)
 # Data Cleaning
 ```{r}
 data <- VL_data %>% 
-  select(Age, Sex, Durationcat2, ARTregimen, PreEACVLcat, 
+  select(Agecat, Sex, Durationcat2, ARTregimen, PreEACVLcat, 
          Forgot, Beliefs, Sideffects, PhysicalIllness, Substanceuse, Depression, Pillburden, LostRanout, Transport, Scheduling, DisclosureFear, Partner, DrugStock, Stigma,
          Education, Counselling, PeerSupport, Extendedpickup,
          PillBox, Calender, Incentives, ARVswallowing, PhoneCalls, SMS, Alarms) %>% 
-  rename(Dur = Durationcat2,
+  rename(AGE = Agecat,
+         Dur = Durationcat2,
          ART = ARTregimen,
          PVL = PreEACVLcat,
          b1 = Forgot,
@@ -53,8 +56,8 @@ data <- VL_data %>%
          t4 = ARVswallowing,
          t5 = PhoneCalls,
          t6 = SMS,
-         t7 = Alarms)
-  
+         t7 = Alarms) %>% 
+  drop_na()
 ```
 
 # Data Summary
@@ -62,17 +65,88 @@ data <- VL_data %>%
 skimr::skim(data)
 ```
 
+# Confirmatory Factor Analysis (CFA)
+```{r}
+cfa <- '  B =~ b1+b2+b3+b4+b5+b6+b7+b8+b9+b10+b11+b12+b13+b14 
+          S =~ s1+s2+s3+s4 
+          T =~ t1+t2+t3+t4+t5+t6+t7'
+```
+
+
+
 # Assession Assumptions(Shapiro-Wilk Univariate normality test)
 ```{r}
 mvnout <- mardia(data)
 mvnout$uv.shapiro
 ```
+
 ```{r}
 mvnout$mv.test
 ```
 
 # Model Specification
-```{r}
 
+```{r}
+cor(data, method = "pearson", use = "complete.obs")
+```
+
+
+```{r}
+# Model Specification
+model <- 'VLS =~ AGE + Sex + Dur + ART + PVL + B + I
+          VLS ~ AGE + Sex + Dur + ART + PVL + B + I
+          B =~ b1+b2+b3+b4+b5+b6+b7+b8+b9+b10+b11+b12+b13+b14 
+          S =~ s1+s2+s3+s4 
+          T =~ t1+t2+t3+t4+t5+t6+t7 
+          I =~ S + T 
+          b2 ~~ b10
+          b14 ~~ b2
+          t1 ~~ b2
+          t7 ~~ b3
+          t7 ~~ b4
+          t4 ~~ b7
+          t7 ~~ b8
+          t6 ~~ b8
+          t3 ~~ b8 
+          b12 ~~ b10
+          b14 ~~ b10
+          t1 ~~ b10'
+```
+
+
+```{r}
+model <- 'VLS =~ AGE + Sex + Dur + ART + PVL + B + I
+          VLS ~ AGE + Sex + Dur + ART + PVL + B + I
+          B =~ b1+b2+b3+b4+b5+b6+b7+b8+b9+b10+b11+b12+b13+b14 
+          S =~ s1+s2+s3+s4 
+          T =~ t1+t2+t3+t4+t5+t6+t7 
+          I =~ S + T'
+
+# SEM Function Syntax
+fit <- sem(model, data=data, std.lv = TRUE, ordered = c(names(data)),check.gradient = FALSE)
+```
+
+```{r}
+fitMeasures(fit, c("cfi.scaled", "srmr"))
+```
+
+# Model Fit
+
+## Chi-Square
+```{r}
+fitMeasures(fit, c("chisq.scaled", "df.scaled", "pvalue.scaled"))
+```
+
+## RMSEA
+```{r}
+fitMeasures(fit, c("rmsea.scaled", "rmsea.ci.lower.scaled", "rmsea.ci.upper.scaled", "rmsea.pvalue.scaled"))
+```
+
+```{r}
+summary(fit, fit.measures = TRUE, standardized=TRUE)
+```
+
+```{r}
+lavaanPlot(model = fit)
 ```
 
