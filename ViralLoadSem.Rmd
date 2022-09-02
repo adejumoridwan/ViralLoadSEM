@@ -16,9 +16,7 @@ library(lavaanPlot)
 
 # Load the Data
 ```{r}
-VL_data <- read_sav("C:/Users/User/Documents/ViralLoadSEM/Adherence.sav")
-
-names(VL_data)
+VL_data <- haven::read_sav("C:/Users/User/Documents/ViralLoadSEM/Adherence.sav")
 ```
 
 # Data Cleaning
@@ -57,7 +55,8 @@ data <- VL_data %>%
          t5 = PhoneCalls,
          t6 = SMS,
          t7 = Alarms) %>% 
-  drop_na()
+  drop_na()#%>% 
+  #mutate_if(is.numeric, as_factor)
 ```
 
 # Data Summary
@@ -65,88 +64,99 @@ data <- VL_data %>%
 skimr::skim(data)
 ```
 
-# Confirmatory Factor Analysis (CFA)
+# Correlation Test
+## Beliefs
 ```{r}
-cfa <- '  B =~ b1+b2+b3+b4+b5+b6+b7+b8+b9+b10+b11+b12+b13+b14 
-          S =~ s1+s2+s3+s4 
-          T =~ t1+t2+t3+t4+t5+t6+t7'
+data %>% 
+  select(AGE:t7) %>% 
+  rstatix::cor_test(method = "spearman")
 ```
 
 
+```{r}
 
-# Assession Assumptions(Shapiro-Wilk Univariate normality test)
+```
+
+
+# Model Assumptions
 ```{r}
 mvnout <- mardia(data)
+## Shapiro-Wilk Univariate normality test
 mvnout$uv.shapiro
 ```
 
 ```{r}
+## Mardia Multivariate normaility test
 mvnout$mv.test
 ```
 
-# Model Specification
+
+# SEM 
+```{r}
+model <- 'B =~ 1*b1 + b2 + b3 +b4 + b5 + b6 + b7 + b8 + b9 + b10 + b11 + b12 + b13 + b14 
+          S =~ 1*s1 + s2 + s3 + s4 
+          T =~ 1*t1 + t2 + t3 + t4 + t5 + t6 + t7
+          I =~ S + T
+          VLS =~ AGE + Sex + 1*PVL + ART + B + I
+          VLS ~ AGE + Sex + PVL + ART + B + I'
+
+## sem function syntax
+fit_mod <- sem(model, data=data, std.lv = TRUE, estimator = "DWLS", se = 'robust')
+
+
+```
+
+## Model Fit
+```{r}
+# Chi-Square Statistics
+fitMeasures(fit.mod, c("chisq", "df", "pvalue"))
+```
 
 ```{r}
-cor(data, method = "pearson", use = "complete.obs")
+# RMSEA
+fitMeasures(fit.mod, c("rmsea", "rmsea.ci.lower", "rmsea.ci.upper", "rmsea.pvalue"))
+```
+
+```{r}
+# CFI and SRMR
+fitMeasures(fit.mod, c("cfi", "srmr"))
+```
+
+```{r}
+# Model Residuals
+residuals(fit.mod)$cov
 ```
 
 
 ```{r}
-# Model Specification
-model <- 'VLS =~ AGE + Sex + Dur + ART + PVL + B + I
-          VLS ~ AGE + Sex + Dur + ART + PVL + B + I
-          B =~ b1+b2+b3+b4+b5+b6+b7+b8+b9+b10+b11+b12+b13+b14 
-          S =~ s1+s2+s3+s4 
-          T =~ t1+t2+t3+t4+t5+t6+t7 
-          I =~ S + T 
-          b2 ~~ b10
-          b14 ~~ b2
-          t1 ~~ b2
-          t7 ~~ b3
-          t7 ~~ b4
-          t4 ~~ b7
-          t7 ~~ b8
-          t6 ~~ b8
-          t3 ~~ b8 
-          b12 ~~ b10
-          b14 ~~ b10
-          t1 ~~ b10'
+summary(fit.mod, fit.measures = TRUE, standardized=TRUE)
+
+standardizedsolution(fit.mod, type = "std.all", se = TRUE, zstat = TRUE, pvalue = TRUE, ci = TRUE)%>% 
+  filter(op == "=~") %>% 
+  select(LV=lhs, Item=rhs, Coefficient=est.std, ci.lower, ci.upper, SE=se, Z=z, 'p-value'=pvalue)
+
+parameterEstimates(fit.mod, standardized=TRUE, rsquare = TRUE) %>% 
+  filter(op == "r2") %>% 
+  select(Item=rhs, R2 = est) 
+
+
+
+```
+
+```{r}
+model2 <- 'B =~ 1*b1 + b2 + b3 +b4 + b8 + b9 + b10 + b12 + b14 
+          VLS =~ AGE + Sex + 1*PVL + ART + B
+          VLS ~ AGE + Sex + PVL + ART + B'
+
+## sem function syntax
+fit_model2 <- sem(model2, data=data, std.lv = TRUE, estimator = "DWLS", se = 'robust')
+
+summary(fit_model2, fit.measures = TRUE, standardized=TRUE)
+
 ```
 
 
 ```{r}
-model <- 'VLS =~ AGE + Sex + Dur + ART + PVL + B + I
-          VLS ~ AGE + Sex + Dur + ART + PVL + B + I
-          B =~ b1+b2+b3+b4+b5+b6+b7+b8+b9+b10+b11+b12+b13+b14 
-          S =~ s1+s2+s3+s4 
-          T =~ t1+t2+t3+t4+t5+t6+t7 
-          I =~ S + T'
-
-# SEM Function Syntax
-fit <- sem(model, data=data, std.lv = TRUE, ordered = c(names(data)),check.gradient = FALSE)
-```
-
-```{r}
-fitMeasures(fit, c("cfi.scaled", "srmr"))
-```
-
-# Model Fit
-
-## Chi-Square
-```{r}
-fitMeasures(fit, c("chisq.scaled", "df.scaled", "pvalue.scaled"))
-```
-
-## RMSEA
-```{r}
-fitMeasures(fit, c("rmsea.scaled", "rmsea.ci.lower.scaled", "rmsea.ci.upper.scaled", "rmsea.pvalue.scaled"))
-```
-
-```{r}
-summary(fit, fit.measures = TRUE, standardized=TRUE)
-```
-
-```{r}
-lavaanPlot(model = fit)
+lavaanPlot(model = fit.mod, coefs = TRUE)
 ```
 
