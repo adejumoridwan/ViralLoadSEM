@@ -5,7 +5,7 @@ date: "`r Sys.Date()`"
 output: pdf_document
 ---
 
-#
+# Load Libraries
 ```{r}
 library(mvnormalTest)
 library(lavaan)
@@ -27,7 +27,7 @@ data <- VL_data %>%
          Education, Counselling, PeerSupport, Extendedpickup,
          PillBox, Calender, Incentives, ARVswallowing, PhoneCalls, SMS, Alarms) %>% 
   rename(AGE = Agecat,
-         Dur = Durationcat2,
+         DUR = Durationcat2,
          ART = ARTregimen,
          PVL = PreEACVLcat,
          b1 = Forgot,
@@ -54,27 +54,7 @@ data <- VL_data %>%
          t4 = ARVswallowing,
          t5 = PhoneCalls,
          t6 = SMS,
-         t7 = Alarms) %>% 
-  drop_na()#%>% 
-  #mutate_if(is.numeric, as_factor)
-```
-
-# Data Summary
-```{r}
-skimr::skim(data)
-```
-
-# Correlation Test
-## Beliefs
-```{r}
-data %>% 
-  select(AGE:t7) %>% 
-  rstatix::cor_test(method = "spearman")
-```
-
-
-```{r}
-
+         t7 = Alarms)
 ```
 
 
@@ -82,7 +62,7 @@ data %>%
 ```{r}
 mvnout <- mardia(data)
 ## Shapiro-Wilk Univariate normality test
-mvnout$uv.shapiro
+a <- mvnout$uv.shapiro
 ```
 
 ```{r}
@@ -97,56 +77,30 @@ model <- 'B =~ 1*b1 + b2 + b3 +b4 + b5 + b6 + b7 + b8 + b9 + b10 + b11 + b12 + b
           S =~ 1*s1 + s2 + s3 + s4 
           T =~ 1*t1 + t2 + t3 + t4 + t5 + t6 + t7
           I =~ S + T
-          VLS =~ AGE + Sex + 1*PVL + ART + B + I
-          VLS ~ AGE + Sex + PVL + ART + B + I'
-
-## sem function syntax
-fit_mod <- sem(model, data=data, std.lv = TRUE, estimator = "DWLS", se = 'robust')
+          VLS =~ 1*AGE + Sex + PVL + ART + DUR + B + I
+          VLS ~ AGE + Sex + PVL + ART + DUR + B + I'
 
 
-```
+# SEM function syntax
+fit_model <- sem(model, data=data, std.lv = TRUE, estimator = "DWLS", se = 'robust')
 
-## Model Fit
-```{r}
-# Chi-Square Statistics
-fitMeasures(fit.mod, c("chisq", "df", "pvalue"))
-```
-
-```{r}
-# RMSEA
-fitMeasures(fit.mod, c("rmsea", "rmsea.ci.lower", "rmsea.ci.upper", "rmsea.pvalue"))
-```
-
-```{r}
-# CFI and SRMR
-fitMeasures(fit.mod, c("cfi", "srmr"))
-```
-
-```{r}
-# Model Residuals
-residuals(fit.mod)$cov
-```
-
-
-```{r}
-summary(fit.mod, fit.measures = TRUE, standardized=TRUE)
-
-standardizedsolution(fit.mod, type = "std.all", se = TRUE, zstat = TRUE, pvalue = TRUE, ci = TRUE)%>% 
-  filter(op == "=~") %>% 
-  select(LV=lhs, Item=rhs, Coefficient=est.std, ci.lower, ci.upper, SE=se, Z=z, 'p-value'=pvalue)
-
-parameterEstimates(fit.mod, standardized=TRUE, rsquare = TRUE) %>% 
-  filter(op == "r2") %>% 
-  select(Item=rhs, R2 = est) 
-
-
+# Model Summary
+summary(fit_model, fit.measures = TRUE, standardized=TRUE)
 
 ```
 
+## Diagram of the Measurement Model
+```{r dev = "png"}
+lavaanPlot(model = fit_model, coefs = TRUE)
+```
+
+
+# Structural Model
 ```{r}
-model2 <- 'B =~ 1*b1 + b2 + b3 +b4 + b8 + b9 + b10 + b12 + b14 
-          VLS =~ AGE + Sex + 1*PVL + ART + B
-          VLS ~ AGE + Sex + PVL + ART + B'
+model2 <- 'B =~ 1*b1 + b2 + b3 +b4 + b8  + b10 + b14 
+          VLS =~ 1*AGE + Sex + PVL + ART + DUR + B
+          VLS ~ AGE + Sex + PVL + ART + DUR + B
+          '
 
 ## sem function syntax
 fit_model2 <- sem(model2, data=data, std.lv = TRUE, estimator = "DWLS", se = 'robust')
@@ -157,6 +111,11 @@ summary(fit_model2, fit.measures = TRUE, standardized=TRUE)
 
 
 ```{r}
-lavaanPlot(model = fit.mod, coefs = TRUE)
+lavaanPlot(model = fit_model2, coefs = TRUE)
+```
+```{r}
+parameterEstimates(fit_model2, standardized=, rsquare = TRUE) %>% 
+  filter(op == "r2") %>% 
+  select(Item=rhs, R2 = est) 
 ```
 

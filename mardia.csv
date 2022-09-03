@@ -1,0 +1,4 @@
+Test,Statistic,p-value,Result
+Skewness,36189.9622,0,NO
+Kurtosis,105.8428,0,NO
+MV Normality,NA,NA,NO
